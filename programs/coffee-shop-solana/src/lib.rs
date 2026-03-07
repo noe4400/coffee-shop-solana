@@ -47,6 +47,45 @@ pub fn add_menu_item(
     Ok(())
 }
 
+pub fn place_order(
+    context: Context<PlaceOrder>,
+    items: Vec<OrderItem>,
+) -> Result<()> {
+
+    let coffee_shop = &mut context.accounts.coffee_shop;
+    let order = &mut context.accounts.order;
+    let customer = context.accounts.customer.key();
+
+    // Calculate total price
+    let mut total_price: u64 = 0;
+
+    for item in items.iter() {
+        let item_total = item.price.checked_mul(item.quantity as u64)
+            .ok_or(CoffeeError::ArithmeticOverflow)?;
+        total_price = total_price.checked_add(item_total)
+            .ok_or(CoffeeError::ArithmeticOverflow)?;
+    }
+
+    // Get blockchain timestamp
+    let clock = Clock::get()?;
+    let timestamp = clock.unix_timestamp;
+
+    // Save order data
+    order.set_inner(Order {
+        shop: coffee_shop.key(),
+        customer,
+        items,
+        total_price,
+        timestamp,
+    });
+
+    // Increment shop order counter
+    coffee_shop.total_orders = coffee_shop.total_orders.checked_add(1)
+        .ok_or(CoffeeError::ArithmeticOverflow)?;
+
+    Ok(())
+}
+
 
 }
 
@@ -54,6 +93,8 @@ pub fn add_menu_item(
 pub enum CoffeeError {
     #[msg("You are not the owner of this coffee shop")]
     Unauthorized,
+    #[msg("Arithmetic overflow detected")]
+    ArithmeticOverflow,
 }
 
 #[account]
@@ -139,6 +180,36 @@ pub struct AddMenuItem<'info> {
 
     #[account(mut)]
     pub owner: Signer<'info>,
+
+    pub system_program: Program<'info, System>,
+}
+
+
+#[derive(Accounts)]
+pub struct PlaceOrder<'info> {
+
+    #[account(
+        mut,
+        seeds = [b"coffee_shop", coffee_shop.owner.as_ref()],
+        bump
+    )]
+    pub coffee_shop: Account<'info, CoffeeShop>,
+
+    #[account(
+        init,
+        payer = customer,
+        space = 8 + Order::INIT_SPACE,
+        seeds = [
+            b"order",
+            coffee_shop.key().as_ref(),
+            &coffee_shop.total_orders.to_le_bytes()
+        ],
+        bump
+    )]
+    pub order: Account<'info, Order>,
+
+    #[account(mut)]
+    pub customer: Signer<'info>,
 
     pub system_program: Program<'info, System>,
 }

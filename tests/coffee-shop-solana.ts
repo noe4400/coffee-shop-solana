@@ -87,4 +87,64 @@ describe("coffe", () => {
     expect(menuItem.shop.toString()).to.equal(coffeeShopPda.toString());
   });
 
+  it("Places an order", async () => {
+  // Create a new customer wallet
+  const customer = anchor.web3.Keypair.generate();
+
+  // Airdrop SOL so the customer can pay transaction fees
+  const signature = await provider.connection.requestAirdrop(
+    customer.publicKey,
+    1 * anchor.web3.LAMPORTS_PER_SOL
+  );
+
+  await provider.connection.confirmTransaction(signature);
+
+  // Fetch current shop data to know order number
+  const shopAccount = await program.account.coffeeShop.fetch(coffeeShopPda);
+  const orderNumber = shopAccount.totalOrders;
+
+  // Derive Order PDA
+  const [orderPda] = anchor.web3.PublicKey.findProgramAddressSync(
+    [
+      Buffer.from("order"),
+      coffeeShopPda.toBuffer(),
+      orderNumber.toArrayLike(Buffer, "le", 8),
+    ],
+    program.programId
+  );
+
+  const accounts: any = {
+    coffeeShop: coffeeShopPda,
+    order: orderPda,
+    menuItem: menuItemPda,
+    customer: customer.publicKey,
+    systemProgram: anchor.web3.SystemProgram.programId,
+  };
+
+  const tx = await program.methods
+   .placeOrder([{ menuItem: menuItemPda, price: itemPrice, quantity: 2 }]) // ordering 2 lattes
+    .accounts(accounts)
+    .signers([customer])
+    .rpc();
+
+  console.log("Place order tx:", tx);
+
+  // Fetch created order
+  const orderAccount = await program.account.order.fetch(orderPda);
+
+  expect(orderAccount.customer.toString()).to.equal(
+    customer.publicKey.toString()
+  );
+
+  expect(orderAccount.shop.toString()).to.equal(
+    coffeeShopPda.toString()
+  );
+
+  expect(orderAccount.items[0].quantity).to.equal(2);
+
+  // Verify total orders increased
+  const updatedShop = await program.account.coffeeShop.fetch(coffeeShopPda);
+  expect(updatedShop.totalOrders.toNumber()).to.equal(1);
+});
+
   });
