@@ -21,6 +21,39 @@ pub mod coffe{
     Ok(())
 }
 
+pub fn add_menu_item(
+    context: Context<AddMenuItem>,
+    name: String,
+    price: u64,
+) -> Result<()> {
+
+    let owner = context.accounts.owner.key();
+    let coffee_shop = &context.accounts.coffee_shop;
+
+    // Verify the caller is the shop owner
+    require!(
+        coffee_shop.owner == owner,
+        CoffeeError::Unauthorized
+    );
+
+    // Save the menu item
+    context.accounts.menu_item.set_inner(MenuItem {
+        shop: coffee_shop.key(),
+        name,
+        price,
+        available: true,
+    });
+
+    Ok(())
+}
+
+
+}
+
+#[error_code]
+pub enum CoffeeError {
+    #[msg("You are not the owner of this coffee shop")]
+    Unauthorized,
 }
 
 #[account]
@@ -73,6 +106,36 @@ pub struct CreateCoffeeShop<'info> {
         bump
     )]
     pub coffee_shop: Account<'info, CoffeeShop>,
+
+    #[account(mut)]
+    pub owner: Signer<'info>,
+
+    pub system_program: Program<'info, System>,
+}
+
+#[derive(Accounts)]
+#[instruction(name: String)]
+pub struct AddMenuItem<'info> {
+
+    #[account(
+        mut,
+        seeds = [b"coffee_shop", owner.key().as_ref()],
+        bump
+    )]
+    pub coffee_shop: Account<'info, CoffeeShop>,
+
+    #[account(
+        init,
+        payer = owner,
+        space = 8 + MenuItem::INIT_SPACE,
+        seeds = [
+            b"menu_item",
+            coffee_shop.key().as_ref(),
+            name.as_bytes()
+        ],
+        bump
+    )]
+    pub menu_item: Account<'info, MenuItem>,
 
     #[account(mut)]
     pub owner: Signer<'info>,
