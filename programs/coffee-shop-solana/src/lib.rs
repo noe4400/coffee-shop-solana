@@ -5,9 +5,21 @@ declare_id!("8QNsjr6drj8ptAAmrZybaubn2U91xRY93taqobuU43G8");
 pub mod coffe{
     use super::*;
 
-    pub fn create_coffee_shop() -> Result<()> {
-        Ok(())
-    }
+  pub fn create_coffee_shop(
+    ctx: Context<CreateCoffeeShop>,
+    name: String,
+) -> Result<()> {
+     let owner_id = ctx.accounts.owner.key(); 
+     let total_orders: u64 = 0;
+
+     ctx.accounts.coffee_shop.set_inner(CoffeeShop {
+        owner: owner_id,
+        name,
+        total_orders,
+    });
+
+    Ok(())
+}
 
 }
 
@@ -48,4 +60,22 @@ pub struct OrderItem {
     pub price: u64,
     #[max_len(3)] // Assuming a maximum quantity of 3 for any item
     pub quantity: u8,
+}
+
+#[derive(Accounts)]
+pub struct CreateCoffeeShop<'info> {
+
+    #[account(
+        init,
+        payer = owner,
+        space = 8 + CoffeeShop::INIT_SPACE,
+        seeds = [b"coffee_shop", owner.key().as_ref()],
+        bump
+    )]
+    pub coffee_shop: Account<'info, CoffeeShop>,
+
+    #[account(mut)]
+    pub owner: Signer<'info>,
+
+    pub system_program: Program<'info, System>,
 }
