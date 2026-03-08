@@ -50,6 +50,25 @@ pub fn add_menu_item(
     Ok(())
 }
 
+pub fn update_menu_item(
+    ctx: Context<UpdateMenuItem>,
+    new_price: Option<u64>,
+    new_available: Option<bool>,
+) -> Result<()> {
+    let menu_item = &mut ctx.accounts.menu_item;
+
+    if let Some(price) = new_price {
+        require!(price > 0, CoffeeError::InvalidPrice);
+        menu_item.price = price;
+    }
+
+    if let Some(available) = new_available {
+        menu_item.available = available;
+    }
+
+    Ok(())
+}
+
 pub fn place_order(
     context: Context<PlaceOrder>,
     items: Vec<OrderItem>,
@@ -117,6 +136,10 @@ pub enum CoffeeError {
     Unauthorized,
     #[msg("Arithmetic overflow detected")]
     ArithmeticOverflow,
+    #[msg("Invalid price")]
+    InvalidPrice,
+    #[msg("Invalid menu item")]
+    InvalidMenuItem,
 }
 
 #[account]
@@ -206,6 +229,29 @@ pub struct AddMenuItem<'info> {
     pub system_program: Program<'info, System>,
 }
 
+
+
+#[derive(Accounts)]
+pub struct UpdateMenuItem<'info> {
+    #[account(
+        mut,
+        has_one = owner,                  // only shop owner can update
+        seeds = [b"coffee_shop", owner.key().as_ref()],
+        bump
+    )]
+    pub coffee_shop: Account<'info, CoffeeShop>,
+
+    #[account(
+        mut,
+        seeds = [b"menu_item", coffee_shop.key().as_ref(), menu_item.name.as_bytes()],
+        bump,
+        constraint = menu_item.shop == coffee_shop.key() @ CoffeeError::InvalidMenuItem
+    )]
+    pub menu_item: Account<'info, MenuItem>,
+
+    #[account(mut)]
+    pub owner: Signer<'info>,
+}
 
 #[derive(Accounts)]
 pub struct PlaceOrder<'info> {

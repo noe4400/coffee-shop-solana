@@ -87,6 +87,53 @@ describe("coffe", () => {
     expect(menuItem.shop.toString()).to.equal(coffeeShopPda.toString());
   });
 
+
+  it("Updates a menu item price", async () => {
+    const newPrice = new anchor.BN(8);
+
+    const accounts: any = {
+      coffeeShop: coffeeShopPda,
+      menuItem: menuItemPda,
+      owner: owner.publicKey,
+    };
+
+    const tx = await program.methods
+      .updateMenuItem(newPrice, null) // only updating price
+      .accounts(accounts)
+      .rpc();
+
+    console.log("Update menu item (price) tx:", tx);
+
+    const menuItem = await program.account.menuItem.fetch(menuItemPda);
+
+    expect(menuItem.price.toNumber()).to.equal(8);
+    expect(menuItem.available).to.equal(true);  // availability unchanged
+    expect(menuItem.name).to.equal(itemName);   // name unchanged
+  });
+  
+  it("Updates a menu item availability", async () => {
+    const accounts: any = {
+      coffeeShop: coffeeShopPda,
+      menuItem: menuItemPda,
+      owner: owner.publicKey,
+    };
+
+    const tx = await program.methods
+      .updateMenuItem(null, false) // only toggling availability off
+      .accounts(accounts)
+      .rpc();
+
+    console.log("Update menu item (availability) tx:", tx);
+
+    const menuItem = await program.account.menuItem.fetch(menuItemPda);
+
+    expect(menuItem.available).to.equal(false);
+    expect(menuItem.price.toNumber()).to.equal(8); // price unchanged from previous test
+  });
+
+
+
+
   it("Places an order", async () => {
   // Create a new customer wallet
   const customer = anchor.web3.Keypair.generate();
