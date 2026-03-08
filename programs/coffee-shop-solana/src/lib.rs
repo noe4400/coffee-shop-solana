@@ -29,6 +29,7 @@ pub fn add_menu_item(
     name: String,
     price: u64,
 ) -> Result<()> {
+    require!(price > 0, CoffeeError::InvalidPrice);  
 
     let owner = context.accounts.owner.key();
     let coffee_shop = &context.accounts.coffee_shop;
@@ -81,6 +82,7 @@ pub fn place_order(
     context: Context<PlaceOrder>,
     items: Vec<OrderItem>,
 ) -> Result<()> {
+    require!(!items.is_empty(), CoffeeError::EmptyOrder);
 
     let coffee_shop = &mut context.accounts.coffee_shop;
     let order = &mut context.accounts.order;
@@ -90,10 +92,23 @@ pub fn place_order(
     // Calculate total price
     let mut total_price: u64 = 0;
 
-    for item in items.iter() {
-        let item_total = item.price.checked_mul(item.quantity as u64)
+      for item in items.iter() {
+        // Each item must belong to this shop
+        
+        require!(
+            item.shop == coffee_shop.key(),
+            CoffeeError::InvalidMenuItem
+        );
+
+        // Quantity must be at least 1
+        require!(item.quantity > 0, CoffeeError::InvalidQuantity);
+
+        let item_total = item.price
+            .checked_mul(item.quantity as u64)
             .ok_or(CoffeeError::ArithmeticOverflow)?;
-        total_price = total_price.checked_add(item_total)
+
+        total_price = total_price
+            .checked_add(item_total)
             .ok_or(CoffeeError::ArithmeticOverflow)?;
     }
 
@@ -111,7 +126,8 @@ pub fn place_order(
         &transfer_instruction,
         &[
            context.accounts.customer.to_account_info(),
-            context.accounts.owner.to_account_info(),
+           context.accounts.owner.to_account_info(),
+           context.accounts.system_program.to_account_info(),
         ],
     )?;
 
@@ -148,6 +164,10 @@ pub enum CoffeeError {
     InvalidPrice,
     #[msg("Invalid menu item")]
     InvalidMenuItem,
+    #[msg("Order must contain at least one item")]
+    EmptyOrder, 
+    #[msg("Quantity must be at least 1")]
+    InvalidQuantity
 }
 
 #[account]
@@ -183,6 +203,7 @@ pub struct Order {
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, InitSpace, PartialEq, Debug)]
 pub struct OrderItem {
+    pub shop: Pubkey,
     pub menu_item: Pubkey,
     pub price: u64,
     #[max_len(3)] // Assuming a maximum quantity of 3 for any item

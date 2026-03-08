@@ -166,7 +166,7 @@ describe("coffe", () => {
   };
 
   const tx = await program.methods
-   .placeOrder([{ menuItem: menuItemPda, price: itemPrice, quantity: 2 }]) // ordering 2 lattes
+   .placeOrder([{  shop: coffeeShopPda, menuItem: menuItemPda, price: itemPrice, quantity: 2 }]) // ordering 2 lattes
     .accounts(accounts)
     .signers([customer])
     .rpc();
