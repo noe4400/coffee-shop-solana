@@ -131,9 +131,6 @@ describe("coffe", () => {
     expect(menuItem.price.toNumber()).to.equal(8); // price unchanged from previous test
   });
 
-
-
-
   it("Places an order", async () => {
   // Create a new customer wallet
   const customer = anchor.web3.Keypair.generate();
@@ -194,4 +191,27 @@ describe("coffe", () => {
   expect(updatedShop.totalOrders.toNumber()).to.equal(1);
 });
 
+it("Removes a menu item", async () => {
+    const accounts: any = {
+        coffeeShop: coffeeShopPda,
+        menuItem: menuItemPda,
+        owner: owner.publicKey,
+    };
+
+    await program.methods
+        .removeMenuItem(itemName)
+        .accounts(accounts)
+        .rpc();
+
+    // Account should no longer exist
+    try {
+        await program.account.menuItem.fetch(menuItemPda);
+        expect.fail("Account should have been closed");
+    } catch (err) {
+        expect((err as Error).message).to.include("Account does not exist");
+    }
+});
+
   });
+
+  

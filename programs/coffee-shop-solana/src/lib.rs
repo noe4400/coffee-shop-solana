@@ -69,6 +69,14 @@ pub fn update_menu_item(
     Ok(())
 }
 
+pub fn remove_menu_item(_ctx: Context<RemoveMenuItem>, _name: String) -> Result<()> {
+    // Anchor's `close = owner` on the account handles:
+    // 1. Transferring rent lamports back to owner
+    // 2. Zeroing out the account data
+    // 3. Setting discriminator to closed
+    Ok(())
+}
+
 pub fn place_order(
     context: Context<PlaceOrder>,
     items: Vec<OrderItem>,
@@ -229,8 +237,6 @@ pub struct AddMenuItem<'info> {
     pub system_program: Program<'info, System>,
 }
 
-
-
 #[derive(Accounts)]
 pub struct UpdateMenuItem<'info> {
     #[account(
@@ -246,6 +252,29 @@ pub struct UpdateMenuItem<'info> {
         seeds = [b"menu_item", coffee_shop.key().as_ref(), menu_item.name.as_bytes()],
         bump,
         constraint = menu_item.shop == coffee_shop.key() @ CoffeeError::InvalidMenuItem
+    )]
+    pub menu_item: Account<'info, MenuItem>,
+
+    #[account(mut)]
+    pub owner: Signer<'info>,
+}
+
+#[derive(Accounts)]
+pub struct RemoveMenuItem<'info> {
+    #[account(
+        mut,
+        has_one = owner,
+        seeds = [b"coffee_shop", owner.key().as_ref()],
+        bump
+    )]
+    pub coffee_shop: Account<'info, CoffeeShop>,
+
+    #[account(
+        mut,
+        seeds = [b"menu_item", coffee_shop.key().as_ref(), menu_item.name.as_bytes()],
+        bump,
+        constraint = menu_item.shop == coffee_shop.key() @ CoffeeError::InvalidMenuItem,
+        close = owner    // ← this does all the cleanup automatically
     )]
     pub menu_item: Account<'info, MenuItem>,
 
