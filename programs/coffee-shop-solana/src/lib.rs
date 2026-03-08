@@ -1,4 +1,7 @@
 use anchor_lang::prelude::*;
+use anchor_lang::solana_program::program::invoke;
+use anchor_lang::solana_program::system_instruction;
+
 declare_id!("8QNsjr6drj8ptAAmrZybaubn2U91xRY93taqobuU43G8");
 
 #[program] 
@@ -55,7 +58,8 @@ pub fn place_order(
     let coffee_shop = &mut context.accounts.coffee_shop;
     let order = &mut context.accounts.order;
     let customer = context.accounts.customer.key();
-
+    let owner = context.accounts.owner.key();
+        
     // Calculate total price
     let mut total_price: u64 = 0;
 
@@ -66,6 +70,24 @@ pub fn place_order(
             .ok_or(CoffeeError::ArithmeticOverflow)?;
     }
 
+    // -----------------------------
+    // Transfer SOL payment
+    // -----------------------------
+
+    let transfer_instruction = system_instruction::transfer(
+        &customer.key(),
+        &owner.key(),
+        total_price,
+    );
+
+    invoke(
+        &transfer_instruction,
+        &[
+           context.accounts.customer.to_account_info(),
+            context.accounts.owner.to_account_info(),
+        ],
+    )?;
+
     // Get blockchain timestamp
     let clock = Clock::get()?;
     let timestamp = clock.unix_timestamp;
@@ -73,7 +95,7 @@ pub fn place_order(
     // Save order data
     order.set_inner(Order {
         shop: coffee_shop.key(),
-        customer,
+        customer: customer.key(),
         items,
         total_price,
         timestamp,
@@ -210,6 +232,9 @@ pub struct PlaceOrder<'info> {
 
     #[account(mut)]
     pub customer: Signer<'info>,
+    /// CHECK: owner wallet receiving payment, validated by address constraint matching coffee_shop.owner
+    #[account(mut, address = coffee_shop.owner)]
+    pub owner: AccountInfo<'info>,
 
     pub system_program: Program<'info, System>,
 }

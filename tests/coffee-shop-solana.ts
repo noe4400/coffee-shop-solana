@@ -116,8 +116,8 @@ describe("coffe", () => {
   const accounts: any = {
     coffeeShop: coffeeShopPda,
     order: orderPda,
-    menuItem: menuItemPda,
     customer: customer.publicKey,
+    owner: owner.publicKey,
     systemProgram: anchor.web3.SystemProgram.programId,
   };
 
