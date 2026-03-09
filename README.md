@@ -148,3 +148,27 @@ anchor deploy
 ```
 
 This wipes the local ledger and starts fresh.
+
+📱 Mobile Client
+
+This Solana program is consumed by a React Native mobile application that allows users to browse the coffee shop menu and place orders directly from their phone using a Phantom wallet.
+
+Mobile repository:
+
+👉 https://github.com/noe4400/coffee-shop-mobile
+
+What the mobile app does
+
+The mobile application acts as the client for this on-chain program and provides the user interface for customers.
+
+Features include:
+	•	Retrieve coffee shop menu items from the Solana program
+	•	Connect a Phantom wallet
+	•	Display available items and prices
+	•	Create purchase transactions
+	•	Request transaction approval inside Phantom
+	•	Submit the signed transaction to Solana
+
+To learn more about the mobile client and how it interacts with the Solana program, check out the README in the mobile repository linked above.
+
+![Mobile App Screenshot](assets/wallet-example.gif)
